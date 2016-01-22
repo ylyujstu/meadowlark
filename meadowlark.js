@@ -1,5 +1,5 @@
 var express = require('express');
-var fortune = require('./lib/fortune.js');
+
 var app = express();
 
 //设置handlebars模板引擎
@@ -14,6 +14,12 @@ app.listen(app.get('port'), function(){
 	console.log('Express started on http://localhost:' + app.get('port') + '; press Ctrl + C to terminate.');
 });
 
+//测试
+app.use(function(req, res, next){
+	res.locals.showTests = app.get('env') != 'production' && req.query.test === '1';
+	next();
+});
+
 
 /* 路由
  * 1.忽略了大小写
@@ -25,8 +31,19 @@ app.get('/', function(req, res){
 });
 
 app.get('/about', function(req, res){
+<<<<<<< HEAD
+<<<<<<< HEAD
 
-	res.render('about', { fortune: fortune.getFortune() })
+	res.render('about', { 
+		fortune: fortune.getFortune(), 
+		pageTestScript: '/qa/tests-about.js'
+	});
+=======
+	res.render('about')
+>>>>>>> parent of 2b9bf4b... add fortune module
+=======
+	res.render('about')
+>>>>>>> parent of 2b9bf4b... add fortune module
 });
 
 //定制404
