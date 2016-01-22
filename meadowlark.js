@@ -1,5 +1,5 @@
 var express = require('express');
-
+var fortune = require('./lib/fortune.js');
 var app = express();
 
 //设置handlebars模板引擎
@@ -25,7 +25,8 @@ app.get('/', function(req, res){
 });
 
 app.get('/about', function(req, res){
-	res.render('about')
+
+	res.render('about', { fortune: fortune.getFortune() })
 });
 
 //定制404
