@@ -1,5 +1,5 @@
 var express = require('express');
-
+var fortune = require('./lib/fortune.js');
 var app = express();
 
 //设置handlebars模板引擎
@@ -8,6 +8,7 @@ app.engine('handlebars', handlebars.engine);
 app.set('view engine', 'handlebars');
 
 app.use(express.static(__dirname + '/public'));
+app.use(require('body-parser')());//表单提交,GET or POST
 app.set('port', process.env.PORT || 3000);
 
 app.listen(app.get('port'), function(){
@@ -21,6 +22,7 @@ app.use(function(req, res, next){
 });
 
 
+
 /* 路由
  * 1.忽略了大小写
  * 2.不考略查询字符
@@ -31,19 +33,9 @@ app.get('/', function(req, res){
 });
 
 app.get('/about', function(req, res){
-<<<<<<< HEAD
-<<<<<<< HEAD
-
 	res.render('about', { 
-		fortune: fortune.getFortune(), 
-		pageTestScript: '/qa/tests-about.js'
+		fortune: fortune.getFortune()
 	});
-=======
-	res.render('about')
->>>>>>> parent of 2b9bf4b... add fortune module
-=======
-	res.render('about')
->>>>>>> parent of 2b9bf4b... add fortune module
 });
 
 //报头信息
@@ -53,6 +45,33 @@ app.get('/headers', function(req, res){
 	for (var name in req.headers)
 		s += name + ':' + req.headers[name] + '\n';
 	res.send(s);
+});
+
+//表单提交
+app.get('/newsletter', function(req, res){
+	res.render('newsletter', {
+		csrf: 'CSRF token goes here.'
+	});
+});
+
+app.post('/process', function(req, res){
+	// console.log('From (from querystring: ' + req.query.form);
+	// console.log('CSRF token (from hidden from field): ' + req.body._csrf);
+	// console.log('Name (from visible form field): ' + req.body.name);
+	// console.log('Email (from  visible form field): ' + req.body.email);
+	
+	if(req.xhr || req.accepts('json,html')==='json'){
+        // if there were an error, we would send { error: 'error description' }
+        res.send({ success: true });
+    } else {
+        // if there were an error, we would redirect to an error page
+        res.redirect(303, '/thank-you');
+    }
+});
+
+//感谢页面
+app.get('/thank-you', function(req, res){
+	res.render('thank-you');
 });
 
 //定制404
