@@ -69,6 +69,15 @@ app.post('/process', function(req, res){
     }
 });
 
+//文件上传
+app.get('/contest/vacation-photo', function(req, res){
+	var now = new Date();
+	res.render('contest/vacation-photo', {
+		year: now.getFullYear(),
+		month: now.getMonth()
+	});
+});
+
 //感谢页面
 app.get('/thank-you', function(req, res){
 	res.render('thank-you');
