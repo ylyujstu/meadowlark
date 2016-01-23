@@ -1,5 +1,6 @@
 var express = require('express');
 var fortune = require('./lib/fortune.js');
+var formidable = require('formidable');
 var app = express();
 
 //设置handlebars模板引擎
@@ -71,11 +72,19 @@ app.post('/process', function(req, res){
 
 //文件上传
 app.get('/contest/vacation-photo', function(req, res){
-	var now = new Date();
-	res.render('contest/vacation-photo', {
-		year: now.getFullYear(),
-		month: now.getMonth()
-	});
+    var now = new Date();
+    res.render('contest/vacation-photo', { year: now.getFullYear(), month: now.getMonth() });
+});
+app.post('/contest/vacation-photo/:year/:month', function(req, res){
+    var form = new formidable.IncomingForm();
+    form.parse(req, function(err, fields, files){
+        if(err) return res.redirect(303, '/error');
+        console.log('received fields:');
+        console.log(fields);
+        console.log('received files:');
+        console.log(files);
+        res.redirect(303, '/thank-you');
+    });
 });
 
 //感谢页面
