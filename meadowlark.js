@@ -10,6 +10,10 @@ app.set('view engine', 'handlebars');
 
 app.use(express.static(__dirname + '/public'));
 app.use(require('body-parser')());//表单提交,GET or POST
+
+var credentials = require('./credentials.js');
+app.use(require('cookie-parser')(credentials.cookieSecret));//可以在res的地方设置cookie或签名cookie
+
 app.set('port', process.env.PORT || 3000);
 
 app.listen(app.get('port'), function(){
@@ -85,6 +89,24 @@ app.post('/contest/vacation-photo/:year/:month', function(req, res){
         console.log(files);
         res.redirect(303, '/thank-you');
     });
+});
+
+//查看cookie和session
+app.get('/cookieAndSession',function(req,res){
+
+	res.cookie('monster', 'nom nom');
+	res.cookie('signed_monster', 'nom nom', { signed: true });
+
+	var monster = req.cookies.monster;
+	var signed_monster = req.signedCookies.signed_monster;
+
+	console.log(monster);
+	console.log(signed_monster);
+
+	/**
+	关于cookie，还有domain，path，maxAge，secure，httpOnly，signed等属性
+	*/
+	res.render('cookieAndSession');
 });
 
 //感谢页面
