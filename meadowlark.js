@@ -12,7 +12,10 @@ app.use(express.static(__dirname + '/public'));
 app.use(require('body-parser')());//表单提交,GET or POST
 
 var credentials = require('./credentials.js');
+//使用cookie
 app.use(require('cookie-parser')(credentials.cookieSecret));//可以在res的地方设置cookie或签名cookie
+//使用session
+app.use(require('express-session')());
 
 app.set('port', process.env.PORT || 3000);
 
@@ -20,11 +23,20 @@ app.listen(app.get('port'), function(){
 	console.log('Express started on http://localhost:' + app.get('port') + '; press Ctrl + C to terminate.');
 });
 
-//测试
+// flash message middleware
 app.use(function(req, res, next){
-	res.locals.showTests = app.get('env') != 'production' && req.query.test === '1';
+	// if there's a flash message, transfer
+	// it to the context, then clear it
+	res.locals.flash = req.session.flash;
+	delete req.session.flash;
 	next();
 });
+
+//测试
+// app.use(function(req, res, next){
+// 	res.locals.showTests = app.get('env') != 'production' && req.query.test === '1';
+// 	next();
+// });
 
 
 
@@ -59,6 +71,54 @@ app.get('/newsletter', function(req, res){
 	});
 });
 
+//表单提交和cookie，session运用
+app.get('/newsletter/archive', function(req, res){
+	res.render('newsletter/archive');
+});
+
+// for now, we're mocking NewsletterSignup:
+function NewsletterSignup(){
+}
+NewsletterSignup.prototype.save = function(cb){
+	cb();
+};
+
+var VALID_EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+
+app.post('/newsletter', function(req, res){
+	console.log(req);
+	console.log('!!!!!!!!!!');
+	console.log(req.body);
+	var name = req.body.name || '', email = req.body.email || '';
+	// input validation
+	if(!email.match(VALID_EMAIL_REGEX)) {
+		if(req.xhr) return res.json({ error: 'Invalid name email address.' });
+		req.session.flash = {
+			type: 'danger',
+			intro: 'Validation error!',
+			message: 'The email address you entered was  not valid.',
+		};
+		return res.redirect(303, '/newsletter/archive');
+	}
+	new NewsletterSignup({ name: name, email: email }).save(function(err){
+		if(err) {
+			if(req.xhr) return res.json({ error: 'Database error.' });
+			req.session.flash = {
+				type: 'danger',
+				intro: 'Database error!',
+				message: 'There was a database error; please try again later.',
+			};
+			return res.redirect(303, '/newsletter/archive');
+		}
+		if(req.xhr) return res.json({ success: true });
+		req.session.flash = {
+			type: 'success',
+			intro: 'Thank you!',
+			message: 'You have now been signed up for the newsletter.',
+		};
+		return res.redirect(303, '/newsletter/archive');
+	});
+});
 app.post('/process', function(req, res){
 	// console.log('From (from querystring: ' + req.query.form);
 	// console.log('CSRF token (from hidden from field): ' + req.body._csrf);
@@ -103,9 +163,26 @@ app.get('/cookieAndSession',function(req,res){
 	console.log(monster);
 	console.log(signed_monster);
 
+	//删除
+	// res.clearCookie('monster');
+
 	/**
 	关于cookie，还有domain，path，maxAge，secure，httpOnly，signed等属性
 	*/
+
+	/*
+	session全都在请求对象上，
+	*/
+	console.log(colorScheme);
+	req.session.userName = 'Anonymous';
+	req.session.colorScheme = 'pink';
+	var colorScheme = req.session.colorScheme || dark;
+
+	console.log(colorScheme);
+
+	//删除
+	// delete req.session.colorScheme;
+
 	res.render('cookieAndSession');
 });
 
