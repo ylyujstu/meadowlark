@@ -1,3 +1,4 @@
+var http = require('http');
 var express = require('express');
 var fortune = require('./lib/fortune.js');
 var formidable = require('formidable');
@@ -9,6 +10,20 @@ app.engine('handlebars', handlebars.engine);
 app.set('view engine', 'handlebars');
 
 app.use(express.static(__dirname + '/public'));
+
+// logging
+switch(app.get('env')){
+    case 'development':
+    	// compact, colorful dev logging
+    	app.use(require('morgan')('dev'));
+        break;
+    case 'production':
+        // module 'express-logger' supports daily log rotation
+        app.use(require('express-logger')({ path: __dirname + '/log/requests.log'}));
+        break;
+}
+
+
 app.use(require('body-parser')());//表单提交,GET or POST
 
 var credentials = require('./credentials.js');
@@ -19,9 +34,74 @@ app.use(require('express-session')());
 
 app.set('port', process.env.PORT || 3000);
 
-app.listen(app.get('port'), function(){
-	console.log('Express started on http://localhost:' + app.get('port') + '; press Ctrl + C to terminate.');
+// PS：每个请求都在一个域中，是一种好的做法，这样除了问题，就能快速找到出问题的地方。
+// use domains for better error handling 处理未知的错误；
+app.use(function(req, res, next){
+    // create a domain for this request
+    var domain = require('domain').create();
+    // handle errors on this domain
+    domain.on('error', function(err){
+        console.error('DOMAIN ERROR CAUGHT\n', err.stack);
+        try {
+            // failsafe shutdown in 5 seconds
+            setTimeout(function(){
+                console.error('Failsafe shutdown.');
+                process.exit(1);
+            }, 5000);
+
+            // disconnect from the cluster
+            var worker = require('cluster').worker;
+            if(worker) worker.disconnect();
+
+            // stop taking new requests
+            server.close();
+
+            try {
+                // attempt to use Express error route
+                next(err);
+            } catch(error){
+                // if Express error route failed, try
+                // plain Node response
+                console.error('Express error mechanism failed.\n', error.stack);
+                res.statusCode = 500;
+                res.setHeader('content-type', 'text/plain');
+                res.end('Server error.');
+            }
+        } catch(error){
+            console.error('Unable to send 500 response.\n', error.stack);
+        }
+    });
+
+    // add the request and response objects to the domain
+    domain.add(req);
+    domain.add(res);
+
+    // execute the rest of the request chain in the domain
+    domain.run(next);
 });
+
+//原来的启动，可能是默认的服务器
+// app.listen(app.get('port'), function(){
+// 	console.log('Express started on http://localhost:' + app.get('port') + '; press Ctrl + C to terminate.');
+// });
+
+//选择开发模式下启动服务器
+// http.createServer(app).listen(app.get('port'), function(){
+// 	console.log('Express started in ' + app.get('env') + ', on http://localhost:' + app.get('port') + '; press Ctrl + C to terminate.');
+// });
+
+//集群下启动	
+function startServer(){
+	http.createServer(app).listen(app.get('port'), function(){
+		console.log('Express started in ' + app.get('env') + ', on http://localhost:' + app.get('port') + '; press Ctrl + C to terminate.');
+	});
+}
+
+if(require.main === module) {
+	startServer();
+} else {
+	module.exports = startServer;
+}
 
 // flash message middleware
 app.use(function(req, res, next){
